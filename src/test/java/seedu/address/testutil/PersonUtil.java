@@ -1,10 +1,11 @@
 package seedu.address.testutil;
 
-import static seedu.address.logic.parser.CliSyntax.PREFIX_ADDRESS;
-import static seedu.address.logic.parser.CliSyntax.PREFIX_EMAIL;
-import static seedu.address.logic.parser.CliSyntax.PREFIX_NAME;
-import static seedu.address.logic.parser.CliSyntax.PREFIX_PHONE;
-import static seedu.address.logic.parser.CliSyntax.PREFIX_TAG;
+import static seedu.address.logic.parser.CmdTypeCliSyntax.CMDTYPE_PATIENT;
+import static seedu.address.logic.parser.PersonCliSyntax.PREFIX_ADDRESS;
+import static seedu.address.logic.parser.PersonCliSyntax.PREFIX_EMAIL;
+import static seedu.address.logic.parser.PersonCliSyntax.PREFIX_NAME;
+import static seedu.address.logic.parser.PersonCliSyntax.PREFIX_PHONE;
+import static seedu.address.logic.parser.PersonCliSyntax.PREFIX_TAG;
 
 import java.util.Set;
 
@@ -22,7 +23,7 @@ public class PersonUtil {
      * Returns an add command string for adding the {@code person}.
      */
     public static String getAddCommand(Person person) {
-        return AddCommand.COMMAND_WORD + " " + getPersonDetails(person);
+        return AddCommand.COMMAND_WORD + " " + CMDTYPE_PATIENT + " " + getPersonDetails(person);
     }
 
     /**
@@ -58,5 +59,18 @@ public class PersonUtil {
             }
         }
         return sb.toString();
+    }
+
+    /**
+     * Since Persons are uniquely identified by ID, testing requires us to compare everything but ID to ensure that
+     * other fields were added correctly. This method returns whether all fields match. ID may match, but is not a
+     * requirement.
+     */
+    public static boolean matchProperties(Person person, Person otherPerson) {
+        return person.getName().equals(otherPerson.getName())
+                && person.getPhone().equals(otherPerson.getPhone())
+                && person.getEmail().equals(otherPerson.getEmail())
+                && person.getAddress().equals(otherPerson.getAddress())
+                && person.getTags().equals(otherPerson.getTags());
     }
 }

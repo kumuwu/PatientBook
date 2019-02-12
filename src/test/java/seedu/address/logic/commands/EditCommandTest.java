@@ -1,248 +1,378 @@
 package seedu.address.logic.commands;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
-import static seedu.address.logic.commands.CommandTestUtil.DESC_AMY;
-import static seedu.address.logic.commands.CommandTestUtil.DESC_BOB;
+import static seedu.address.logic.commands.CommandTestUtil.VALID_ADDRESS_AMY;
+import static seedu.address.logic.commands.CommandTestUtil.VALID_EMAIL_AMY;
+import static seedu.address.logic.commands.CommandTestUtil.VALID_NAME_AMY;
 import static seedu.address.logic.commands.CommandTestUtil.VALID_NAME_BOB;
+import static seedu.address.logic.commands.CommandTestUtil.VALID_PHONE_AMY;
 import static seedu.address.logic.commands.CommandTestUtil.VALID_PHONE_BOB;
-import static seedu.address.logic.commands.CommandTestUtil.VALID_TAG_HUSBAND;
-import static seedu.address.logic.commands.CommandTestUtil.assertCommandFailure;
-import static seedu.address.logic.commands.CommandTestUtil.assertCommandSuccess;
-import static seedu.address.logic.commands.CommandTestUtil.showPersonAtIndex;
-import static seedu.address.testutil.TypicalIndexes.INDEX_FIRST_PERSON;
-import static seedu.address.testutil.TypicalIndexes.INDEX_SECOND_PERSON;
-import static seedu.address.testutil.TypicalPersons.getTypicalAddressBook;
+import static seedu.address.logic.commands.CommandTestUtil.VALID_TAG_FRIEND;
+import static seedu.address.logic.commands.EditCommand.MESSAGE_CANNOT_EDIT_DELETED;
+import static seedu.address.logic.commands.EditCommand.MESSAGE_INVALID_FORMAT;
+import static seedu.address.logic.parser.CmdTypeCliSyntax.CMDTYPE_APPOINTMENT;
+import static seedu.address.logic.parser.CmdTypeCliSyntax.CMDTYPE_PATIENT;
+import static seedu.address.logic.parser.PersonCliSyntax.PREFIX_ADDRESS;
+import static seedu.address.logic.parser.PersonCliSyntax.PREFIX_EMAIL;
+import static seedu.address.logic.parser.PersonCliSyntax.PREFIX_NAME;
+import static seedu.address.logic.parser.PersonCliSyntax.PREFIX_PHONE;
+import static seedu.address.logic.parser.PersonCliSyntax.PREFIX_TAG;
+import static seedu.address.logic.parser.ScheduleEventCliSyntax.PREFIX_DATETIME;
+import static seedu.address.logic.parser.ScheduleEventCliSyntax.PREFIX_DETAILS;
+import static seedu.address.logic.parser.ScheduleEventCliSyntax.PREFIX_PERSON;
+import static seedu.address.logic.parser.ScheduleEventCliSyntax.PREFIX_TAGS;
+import static seedu.address.testutil.PersonUtil.matchProperties;
+import static seedu.address.testutil.ScheduleEventUtil.matchEventProperties;
 
+import java.util.Calendar;
+
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 
-import seedu.address.commons.core.Messages;
-import seedu.address.commons.core.index.Index;
+import seedu.address.commons.util.Pair;
 import seedu.address.logic.CommandHistory;
-import seedu.address.logic.commands.EditCommand.EditPersonDescriptor;
-import seedu.address.model.AddressBook;
-import seedu.address.model.Model;
-import seedu.address.model.ModelManager;
-import seedu.address.model.UserPrefs;
+import seedu.address.logic.commands.exceptions.CommandException;
+import seedu.address.logic.parser.ArgumentMultimap;
+import seedu.address.logic.parser.ArgumentTokenizer;
+import seedu.address.logic.parser.DateTimeParser;
+import seedu.address.model.AddressBookModel;
+import seedu.address.model.AddressBookModelManager;
+import seedu.address.model.DiagnosisModel;
+import seedu.address.model.DiagnosisModelManager;
+import seedu.address.model.ScheduleModel;
+import seedu.address.model.ScheduleModelManager;
+import seedu.address.model.event.ScheduleEvent;
+import seedu.address.model.person.Address;
+import seedu.address.model.person.Email;
+import seedu.address.model.person.Name;
 import seedu.address.model.person.Person;
-import seedu.address.testutil.EditPersonDescriptorBuilder;
+import seedu.address.model.person.Phone;
+import seedu.address.model.tag.Tag;
 import seedu.address.testutil.PersonBuilder;
+import seedu.address.testutil.ScheduleEventBuilder;
 
 /**
- * Contains integration tests (interaction with the Model, UndoCommand and RedoCommand) and unit tests for EditCommand.
+ * Tests the edit command.
  */
 public class EditCommandTest {
+    @Rule
+    public ExpectedException thrown = ExpectedException.none();
 
-    private Model model = new ModelManager(getTypicalAddressBook(), new UserPrefs());
-    private CommandHistory commandHistory = new CommandHistory();
+    // --- start of address book tests ---
 
     @Test
-    public void execute_allFieldsSpecifiedUnfilteredList_success() {
-        Person editedPerson = new PersonBuilder().build();
-        EditPersonDescriptor descriptor = new EditPersonDescriptorBuilder(editedPerson).build();
-        EditCommand editCommand = new EditCommand(INDEX_FIRST_PERSON, descriptor);
+    public void parse_patient_success() throws Exception {
+        // edit name
+        Person person = new PersonBuilder().build();
+        Person editedPerson = new PersonBuilder().withName(VALID_NAME_AMY).build();
+        ArgumentMultimap argMultimap = ArgumentTokenizer.tokenize(PREFIX_NAME
+                + VALID_NAME_AMY, PREFIX_NAME);
+        assertTrue(matchProperties(editedPerson, testAddressBookModel(person, argMultimap)));
 
-        String expectedMessage = String.format(EditCommand.MESSAGE_EDIT_PERSON_SUCCESS, editedPerson);
+        // edit phone
+        person = new PersonBuilder().build();
+        editedPerson = new PersonBuilder().withPhone(VALID_PHONE_AMY).build();
+        argMultimap = ArgumentTokenizer.tokenize(PREFIX_PHONE
+                + VALID_PHONE_AMY, PREFIX_PHONE);
+        assertTrue(matchProperties(editedPerson, testAddressBookModel(person, argMultimap)));
 
-        Model expectedModel = new ModelManager(new AddressBook(model.getAddressBook()), new UserPrefs());
-        expectedModel.updatePerson(model.getFilteredPersonList().get(0), editedPerson);
-        expectedModel.commitAddressBook();
+        // edit email
+        person = new PersonBuilder().build();
+        editedPerson = new PersonBuilder().withEmail(VALID_EMAIL_AMY).build();
+        argMultimap = ArgumentTokenizer.tokenize(PREFIX_EMAIL
+                + VALID_EMAIL_AMY, PREFIX_EMAIL);
+        assertTrue(matchProperties(editedPerson, testAddressBookModel(person, argMultimap)));
 
-        assertCommandSuccess(editCommand, model, commandHistory, expectedMessage, expectedModel);
+        // edit address
+        person = new PersonBuilder().build();
+        editedPerson = new PersonBuilder().withAddress(VALID_ADDRESS_AMY).build();
+        argMultimap = ArgumentTokenizer.tokenize(PREFIX_ADDRESS
+                + VALID_ADDRESS_AMY, PREFIX_ADDRESS);
+        assertTrue(matchProperties(editedPerson, testAddressBookModel(person, argMultimap)));
+
+        // add tag
+        person = new PersonBuilder().build();
+        editedPerson = new PersonBuilder().withTags(VALID_TAG_FRIEND).build();
+        argMultimap = ArgumentTokenizer.tokenize(PREFIX_TAG + VALID_TAG_FRIEND,
+                PREFIX_TAG);
+        assertTrue(matchProperties(editedPerson, testAddressBookModel(person, argMultimap)));
+
+        // remove tags
+        person = new PersonBuilder().withTags(VALID_TAG_FRIEND).build();
+        editedPerson = new PersonBuilder().build();
+        argMultimap = ArgumentTokenizer.tokenize(PREFIX_TAG.toString(), PREFIX_TAG);
+        assertTrue(matchProperties(editedPerson, testAddressBookModel(person, argMultimap)));
     }
 
     @Test
-    public void execute_someFieldsSpecifiedUnfilteredList_success() {
-        Index indexLastPerson = Index.fromOneBased(model.getFilteredPersonList().size());
-        Person lastPerson = model.getFilteredPersonList().get(indexLastPerson.getZeroBased());
-
-        PersonBuilder personInList = new PersonBuilder(lastPerson);
-        Person editedPerson = personInList.withName(VALID_NAME_BOB).withPhone(VALID_PHONE_BOB)
-                .withTags(VALID_TAG_HUSBAND).build();
-
-        EditPersonDescriptor descriptor = new EditPersonDescriptorBuilder().withName(VALID_NAME_BOB)
-                .withPhone(VALID_PHONE_BOB).withTags(VALID_TAG_HUSBAND).build();
-        EditCommand editCommand = new EditCommand(indexLastPerson, descriptor);
-
-        String expectedMessage = String.format(EditCommand.MESSAGE_EDIT_PERSON_SUCCESS, editedPerson);
-
-        Model expectedModel = new ModelManager(new AddressBook(model.getAddressBook()), new UserPrefs());
-        expectedModel.updatePerson(lastPerson, editedPerson);
-        expectedModel.commitAddressBook();
-
-        assertCommandSuccess(editCommand, model, commandHistory, expectedMessage, expectedModel);
+    public void parsePatient_multipleRepeatedFields_acceptsLast() throws Exception {
+        Person person = new PersonBuilder().build();
+        Person editedPerson = new PersonBuilder()
+                .withName(VALID_NAME_BOB)
+                .withPhone(VALID_PHONE_BOB)
+                .build();
+        ArgumentMultimap argMultimap = ArgumentTokenizer.tokenize(PREFIX_NAME + VALID_NAME_AMY + " "
+                + PREFIX_PHONE + VALID_PHONE_AMY + " "
+                + PREFIX_NAME + VALID_NAME_BOB + " "
+                + PREFIX_PHONE + VALID_PHONE_BOB, PREFIX_NAME, PREFIX_PHONE);
+        System.out.println(person);
+        System.out.println(argMultimap.getValue(PREFIX_NAME));
+        assertTrue(matchProperties(editedPerson, testAddressBookModel(person, argMultimap)));
+    }
+    @Test
+    public void parsePatient_invalidPatientId() throws Exception {
+        thrown.expect(CommandException.class);
+        thrown.expectMessage(EditCommand.MESSAGE_INVALID_PATIENT_ID);
+        EditCommand cmd = new EditCommand(CMDTYPE_PATIENT, "invalidID",
+                ArgumentTokenizer.tokenize(PREFIX_NAME + VALID_NAME_AMY, PREFIX_NAME));
+        cmd.execute(new AddressBookModelManager(),
+                new ScheduleModelManager(),
+                new DiagnosisModelManager(),
+                new CommandHistory());
     }
 
     @Test
-    public void execute_noFieldSpecifiedUnfilteredList_success() {
-        EditCommand editCommand = new EditCommand(INDEX_FIRST_PERSON, new EditPersonDescriptor());
-        Person editedPerson = model.getFilteredPersonList().get(INDEX_FIRST_PERSON.getZeroBased());
-
-        String expectedMessage = String.format(EditCommand.MESSAGE_EDIT_PERSON_SUCCESS, editedPerson);
-
-        Model expectedModel = new ModelManager(new AddressBook(model.getAddressBook()), new UserPrefs());
-        expectedModel.commitAddressBook();
-
-        assertCommandSuccess(editCommand, model, commandHistory, expectedMessage, expectedModel);
+    public void parsePatient_unchanged_throwsCommandException() throws Exception {
+        thrown.expect(CommandException.class);
+        thrown.expectMessage(EditCommand.MESSAGE_NOT_EDITED);
+        testAddressBookModel(new PersonBuilder().build(),
+                ArgumentTokenizer.tokenize("", PREFIX_NAME));
     }
 
     @Test
-    public void execute_filteredList_success() {
-        showPersonAtIndex(model, INDEX_FIRST_PERSON);
-
-        Person personInFilteredList = model.getFilteredPersonList().get(INDEX_FIRST_PERSON.getZeroBased());
-        Person editedPerson = new PersonBuilder(personInFilteredList).withName(VALID_NAME_BOB).build();
-        EditCommand editCommand = new EditCommand(INDEX_FIRST_PERSON,
-                new EditPersonDescriptorBuilder().withName(VALID_NAME_BOB).build());
-
-        String expectedMessage = String.format(EditCommand.MESSAGE_EDIT_PERSON_SUCCESS, editedPerson);
-
-        Model expectedModel = new ModelManager(new AddressBook(model.getAddressBook()), new UserPrefs());
-        expectedModel.updatePerson(model.getFilteredPersonList().get(0), editedPerson);
-        expectedModel.commitAddressBook();
-
-        assertCommandSuccess(editCommand, model, commandHistory, expectedMessage, expectedModel);
+    public void parsePatient_invalidName_throwsCommandException() throws Exception {
+        thrown.expect(CommandException.class);
+        thrown.expectMessage(String.format(MESSAGE_INVALID_FORMAT, Name.class.getSimpleName()));
+        // no & allowed in name
+        testAddressBookModel(new PersonBuilder().build(),
+                ArgumentTokenizer.tokenize(PREFIX_NAME + "James&", PREFIX_NAME));
     }
 
     @Test
-    public void execute_duplicatePersonUnfilteredList_failure() {
-        Person firstPerson = model.getFilteredPersonList().get(INDEX_FIRST_PERSON.getZeroBased());
-        EditPersonDescriptor descriptor = new EditPersonDescriptorBuilder(firstPerson).build();
-        EditCommand editCommand = new EditCommand(INDEX_SECOND_PERSON, descriptor);
-
-        assertCommandFailure(editCommand, model, commandHistory, EditCommand.MESSAGE_DUPLICATE_PERSON);
+    public void parsePatient_invalidPhone_throwsCommandException() throws Exception {
+        thrown.expect(CommandException.class);
+        thrown.expectMessage(String.format(MESSAGE_INVALID_FORMAT, Phone.class.getSimpleName()));
+        // no a allowed in phone number
+        testAddressBookModel(new PersonBuilder().build(),
+                ArgumentTokenizer.tokenize(PREFIX_PHONE + "911a", PREFIX_PHONE));
     }
 
     @Test
-    public void execute_duplicatePersonFilteredList_failure() {
-        showPersonAtIndex(model, INDEX_FIRST_PERSON);
-
-        // edit person in filtered list into a duplicate in address book
-        Person personInList = model.getAddressBook().getPersonList().get(INDEX_SECOND_PERSON.getZeroBased());
-        EditCommand editCommand = new EditCommand(INDEX_FIRST_PERSON,
-                new EditPersonDescriptorBuilder(personInList).build());
-
-        assertCommandFailure(editCommand, model, commandHistory, EditCommand.MESSAGE_DUPLICATE_PERSON);
+    public void parsePatient_invalidEmail_throwsCommandException() throws Exception {
+        thrown.expect(CommandException.class);
+        thrown.expectMessage(String.format(MESSAGE_INVALID_FORMAT, Email.class.getSimpleName()));
+        // @ missing from email
+        testAddressBookModel(new PersonBuilder().build(),
+                ArgumentTokenizer.tokenize(PREFIX_EMAIL + "bob!yahoo", PREFIX_EMAIL));
     }
 
     @Test
-    public void execute_invalidPersonIndexUnfilteredList_failure() {
-        Index outOfBoundIndex = Index.fromOneBased(model.getFilteredPersonList().size() + 1);
-        EditPersonDescriptor descriptor = new EditPersonDescriptorBuilder().withName(VALID_NAME_BOB).build();
-        EditCommand editCommand = new EditCommand(outOfBoundIndex, descriptor);
+    public void parsePatient_invalidAddress_throwsCommandException() throws Exception {
+        thrown.expect(CommandException.class);
+        thrown.expectMessage(String.format(MESSAGE_INVALID_FORMAT, Address.class.getSimpleName()));
+        // no empty address allowed
+        testAddressBookModel(new PersonBuilder().build(),
+                ArgumentTokenizer.tokenize(PREFIX_ADDRESS + "", PREFIX_ADDRESS));
+    }
 
-        assertCommandFailure(editCommand, model, commandHistory, Messages.MESSAGE_INVALID_PERSON_DISPLAYED_INDEX);
+    @Test
+    public void parsePatient_invalidTag_throwsCommandException() throws Exception {
+        thrown.expect(CommandException.class);
+        thrown.expectMessage(String.format(MESSAGE_INVALID_FORMAT, Tag.class.getSimpleName()));
+        // no * allowed in tag
+        testAddressBookModel(new PersonBuilder().build(),
+                ArgumentTokenizer.tokenize(PREFIX_TAG + "tag*", PREFIX_TAG));
+    }
+
+    @Test
+    public void parsePatient_editDeleted_throwsCommandException() throws Exception {
+        thrown.expect(CommandException.class);
+        thrown.expectMessage(MESSAGE_CANNOT_EDIT_DELETED);
+        Person person = new PersonBuilder().build();
+        person.delete();
+        // attempt to change person's name
+        testAddressBookModel(person, ArgumentTokenizer.tokenize(PREFIX_NAME + VALID_NAME_AMY,
+                PREFIX_NAME));
+    }
+
+    // --- end of address book tests ---
+
+    // --- start of schedule tests ---
+
+    @Test
+    public void parse_appointment_success() throws Exception {
+        // edit person
+        ScheduleEvent event = new ScheduleEventBuilder().build();
+        ScheduleEvent editedEvent = new ScheduleEventBuilder()
+                .withPersonId("p229").build();
+        ArgumentMultimap argMultimap = ArgumentTokenizer
+                .tokenize(PREFIX_PERSON + "p229", PREFIX_PERSON);
+        assertTrue(matchEventProperties(editedEvent, testScheduleModel(event, argMultimap)));
+
+        // edit dateTime
+        event = new ScheduleEventBuilder().build();
+        Calendar newStart = Calendar.getInstance();
+        newStart.set(2019, Calendar.APRIL, 1, 10, 0, 0);
+        Calendar newEnd = Calendar.getInstance();
+        newEnd.set(2019, Calendar.APRIL, 1, 11, 0, 0);
+        editedEvent = new ScheduleEventBuilder()
+                .withDurations(new Pair<>(newStart, newEnd)).build();
+        argMultimap = ArgumentTokenizer
+                .tokenize(PREFIX_DATETIME + "01/04/2019 10:00 - 11:00", PREFIX_DATETIME);
+        assertTrue(matchEventProperties(editedEvent, testScheduleModel(event, argMultimap)));
+
+        // edit details
+        event = new ScheduleEventBuilder().build();
+        editedEvent = new ScheduleEventBuilder().withDetails("edited details").build();
+        argMultimap = ArgumentTokenizer
+                .tokenize(PREFIX_DETAILS + "edited details", PREFIX_DETAILS);
+        assertTrue(matchEventProperties(editedEvent, testScheduleModel(event, argMultimap)));
+
+        // add tag
+        event = new ScheduleEventBuilder().build();
+        editedEvent = new ScheduleEventBuilder().withTags("newtag").build();
+        argMultimap = ArgumentTokenizer.tokenize(PREFIX_TAGS + "newtag", PREFIX_TAGS);
+        assertTrue(matchEventProperties(editedEvent, testScheduleModel(event, argMultimap)));
+
+        // remove tags
+        event = new ScheduleEventBuilder().withTags("tag1", "tag2").build();
+        editedEvent = new ScheduleEventBuilder().build();
+        argMultimap = ArgumentTokenizer.tokenize(PREFIX_TAGS.toString(), PREFIX_TAGS);
+        assertTrue(matchEventProperties(editedEvent, testScheduleModel(event, argMultimap)));
+
+
+    }
+
+    @Test
+    public void parseAppointment_invalidEventId() throws Exception {
+        thrown.expect(CommandException.class);
+        thrown.expectMessage(EditCommand.MESSAGE_INVALID_EVENT_ID);
+        EditCommand cmd = new EditCommand(CMDTYPE_APPOINTMENT, "invalidID",
+                ArgumentTokenizer.tokenize(PREFIX_DETAILS + "some details", PREFIX_DETAILS));
+        cmd.execute(new AddressBookModelManager(),
+                new ScheduleModelManager(),
+                new DiagnosisModelManager(),
+                new CommandHistory());
+    }
+
+    @Test
+    public void parseAppointment_invalidDateTimeFormat() throws Exception {
+        thrown.expect(CommandException.class);
+        thrown.expectMessage("Invalid format for date input");
+
+        ScheduleEvent event = new ScheduleEventBuilder().build();
+        Calendar newStart = Calendar.getInstance();
+        newStart.set(2019, Calendar.APRIL, 1, 10, 0, 0);
+        Calendar newEnd = Calendar.getInstance();
+        newEnd.set(2019, Calendar.APRIL, 1, 11, 0, 0);
+        ScheduleEvent editedEvent = new ScheduleEventBuilder()
+                .withDurations(new Pair<>(newStart, newEnd)).build();
+        ArgumentMultimap argMultimap = ArgumentTokenizer
+                .tokenize(PREFIX_DATETIME + "01/04/2019 11:00", PREFIX_DATETIME);
+        assertTrue(matchEventProperties(editedEvent, testScheduleModel(event, argMultimap)));
+
+    }
+
+    @Test
+    public void parseAppointment_invalidTagFormat() throws Exception {
+        thrown.expect(CommandException.class);
+        thrown.expectMessage("Invalid format for tags.");
+
+        ScheduleEvent event = new ScheduleEventBuilder().build();
+        ScheduleEvent editedEvent = new ScheduleEventBuilder().build();
+        ArgumentMultimap argMultimap = ArgumentTokenizer
+                .tokenize(PREFIX_TAGS + "tag*", PREFIX_TAGS);
+        assertTrue(matchEventProperties(editedEvent, testScheduleModel(event, argMultimap)));
+
+    }
+
+    @Test
+    public void parseAppointment_clashingDateTime() throws Exception {
+        thrown.expect(CommandException.class);
+        thrown.expectMessage(String.format(DateTimeParser.MESSAGE_INVALID_SLOT,
+                DateTimeParser.MESSAGE_SLOT_CLASHING));
+
+        AddressBookModel addressBookModel = new AddressBookModelManager();
+        ScheduleModel scheduleModel = new ScheduleModelManager();
+        DiagnosisModel diagnosisModel = new DiagnosisModelManager();
+        CommandHistory commandHistory = new CommandHistory();
+
+        Calendar e1Start = Calendar.getInstance();
+        e1Start.set(2019, Calendar.APRIL, 1, 10, 0, 0);
+        Calendar e1End = Calendar.getInstance();
+        e1End.set(2019, Calendar.APRIL, 1, 11, 0, 0);
+        ScheduleEvent e1 = new ScheduleEventBuilder()
+                .withDurations(new Pair<>(e1Start, e1End)).build();
+
+        scheduleModel.addEvent(e1);
+
+        Calendar e2Start = Calendar.getInstance();
+        e1Start.set(2019, Calendar.APRIL, 1, 11, 0, 0);
+        Calendar e2End = Calendar.getInstance();
+        e1End.set(2019, Calendar.APRIL, 1, 12, 0, 0);
+        ScheduleEvent e2 = new ScheduleEventBuilder()
+                .withDurations(new Pair<>(e2Start, e2End)).build();
+
+        scheduleModel.addEvent(e2);
+
+        ArgumentMultimap argMultimap = ArgumentTokenizer
+                .tokenize(PREFIX_DATETIME + "01/04/2019 10:30 - 11:30", PREFIX_DATETIME);
+
+        EditCommand cmd = new EditCommand(CMDTYPE_APPOINTMENT, e2.getId().toString(), argMultimap);
+        cmd.execute(addressBookModel, scheduleModel, diagnosisModel, commandHistory);
+    }
+
+
+    // --- end of schedule tests ---
+
+    /**
+     * Tests address book model
+     * @param original original person
+     * @param argMultimap mapping
+     * @return edited person
+     * @throws Exception
+     */
+    private Person testAddressBookModel(Person original, ArgumentMultimap argMultimap)
+            throws Exception {
+
+        AddressBookModel addressBookModel = new AddressBookModelManager();
+        ScheduleModel scheduleModel = new ScheduleModelManager();
+        DiagnosisModel diagnosisModel = new DiagnosisModelManager();
+        CommandHistory commandHistory = new CommandHistory();
+
+        addressBookModel.addPerson(original);
+
+        EditCommand cmd = new EditCommand(CMDTYPE_PATIENT, original.getId().toString(), argMultimap);
+
+        cmd.execute(addressBookModel, scheduleModel, diagnosisModel, commandHistory);
+
+        // added person should be in index 0
+        return addressBookModel.internalGetFromPersonList(unused -> true).get(0);
     }
 
     /**
-     * Edit filtered list where index is larger than size of filtered list,
-     * but smaller than size of address book
+     * Tests schedule model
+     * @param original original event
+     * @param argMultimap mapping
+     * @return edited event
+     * @throws Exception
      */
-    @Test
-    public void execute_invalidPersonIndexFilteredList_failure() {
-        showPersonAtIndex(model, INDEX_FIRST_PERSON);
-        Index outOfBoundIndex = INDEX_SECOND_PERSON;
-        // ensures that outOfBoundIndex is still in bounds of address book list
-        assertTrue(outOfBoundIndex.getZeroBased() < model.getAddressBook().getPersonList().size());
+    private ScheduleEvent testScheduleModel(ScheduleEvent original,
+                                            ArgumentMultimap argMultimap) throws Exception {
 
-        EditCommand editCommand = new EditCommand(outOfBoundIndex,
-                new EditPersonDescriptorBuilder().withName(VALID_NAME_BOB).build());
+        AddressBookModel addressBookModel = new AddressBookModelManager();
+        ScheduleModel scheduleModel = new ScheduleModelManager();
+        DiagnosisModel diagnosisModel = new DiagnosisModelManager();
+        CommandHistory commandHistory = new CommandHistory();
 
-        assertCommandFailure(editCommand, model, commandHistory, Messages.MESSAGE_INVALID_PERSON_DISPLAYED_INDEX);
+        scheduleModel.addEvent(original);
+
+        EditCommand cmd = new EditCommand(CMDTYPE_APPOINTMENT, original.getId().toString(), argMultimap);
+
+        cmd.execute(addressBookModel, scheduleModel, diagnosisModel, commandHistory);
+
+        // added scheduleEvent should be in index 0
+        return scheduleModel.internalGetFromEventList(unused -> true).get(0);
     }
-
-    @Test
-    public void executeUndoRedo_validIndexUnfilteredList_success() throws Exception {
-        Person editedPerson = new PersonBuilder().build();
-        Person personToEdit = model.getFilteredPersonList().get(INDEX_FIRST_PERSON.getZeroBased());
-        EditPersonDescriptor descriptor = new EditPersonDescriptorBuilder(editedPerson).build();
-        EditCommand editCommand = new EditCommand(INDEX_FIRST_PERSON, descriptor);
-        Model expectedModel = new ModelManager(new AddressBook(model.getAddressBook()), new UserPrefs());
-        expectedModel.updatePerson(personToEdit, editedPerson);
-        expectedModel.commitAddressBook();
-
-        // edit -> first person edited
-        editCommand.execute(model, commandHistory);
-
-        // undo -> reverts addressbook back to previous state and filtered person list to show all persons
-        expectedModel.undoAddressBook();
-        assertCommandSuccess(new UndoCommand(), model, commandHistory, UndoCommand.MESSAGE_SUCCESS, expectedModel);
-
-        // redo -> same first person edited again
-        expectedModel.redoAddressBook();
-        assertCommandSuccess(new RedoCommand(), model, commandHistory, RedoCommand.MESSAGE_SUCCESS, expectedModel);
-    }
-
-    @Test
-    public void executeUndoRedo_invalidIndexUnfilteredList_failure() {
-        Index outOfBoundIndex = Index.fromOneBased(model.getFilteredPersonList().size() + 1);
-        EditPersonDescriptor descriptor = new EditPersonDescriptorBuilder().withName(VALID_NAME_BOB).build();
-        EditCommand editCommand = new EditCommand(outOfBoundIndex, descriptor);
-
-        // execution failed -> address book state not added into model
-        assertCommandFailure(editCommand, model, commandHistory, Messages.MESSAGE_INVALID_PERSON_DISPLAYED_INDEX);
-
-        // single address book state in model -> undoCommand and redoCommand fail
-        assertCommandFailure(new UndoCommand(), model, commandHistory, UndoCommand.MESSAGE_FAILURE);
-        assertCommandFailure(new RedoCommand(), model, commandHistory, RedoCommand.MESSAGE_FAILURE);
-    }
-
-    /**
-     * 1. Edits a {@code Person} from a filtered list.
-     * 2. Undo the edit.
-     * 3. The unfiltered list should be shown now. Verify that the index of the previously edited person in the
-     * unfiltered list is different from the index at the filtered list.
-     * 4. Redo the edit. This ensures {@code RedoCommand} edits the person object regardless of indexing.
-     */
-    @Test
-    public void executeUndoRedo_validIndexFilteredList_samePersonEdited() throws Exception {
-        Person editedPerson = new PersonBuilder().build();
-        EditPersonDescriptor descriptor = new EditPersonDescriptorBuilder(editedPerson).build();
-        EditCommand editCommand = new EditCommand(INDEX_FIRST_PERSON, descriptor);
-        Model expectedModel = new ModelManager(new AddressBook(model.getAddressBook()), new UserPrefs());
-
-        showPersonAtIndex(model, INDEX_SECOND_PERSON);
-        Person personToEdit = model.getFilteredPersonList().get(INDEX_FIRST_PERSON.getZeroBased());
-        expectedModel.updatePerson(personToEdit, editedPerson);
-        expectedModel.commitAddressBook();
-
-        // edit -> edits second person in unfiltered person list / first person in filtered person list
-        editCommand.execute(model, commandHistory);
-
-        // undo -> reverts addressbook back to previous state and filtered person list to show all persons
-        expectedModel.undoAddressBook();
-        assertCommandSuccess(new UndoCommand(), model, commandHistory, UndoCommand.MESSAGE_SUCCESS, expectedModel);
-
-        assertNotEquals(model.getFilteredPersonList().get(INDEX_FIRST_PERSON.getZeroBased()), personToEdit);
-        // redo -> edits same second person in unfiltered person list
-        expectedModel.redoAddressBook();
-        assertCommandSuccess(new RedoCommand(), model, commandHistory, RedoCommand.MESSAGE_SUCCESS, expectedModel);
-    }
-
-    @Test
-    public void equals() {
-        final EditCommand standardCommand = new EditCommand(INDEX_FIRST_PERSON, DESC_AMY);
-
-        // same values -> returns true
-        EditPersonDescriptor copyDescriptor = new EditPersonDescriptor(DESC_AMY);
-        EditCommand commandWithSameValues = new EditCommand(INDEX_FIRST_PERSON, copyDescriptor);
-        assertTrue(standardCommand.equals(commandWithSameValues));
-
-        // same object -> returns true
-        assertTrue(standardCommand.equals(standardCommand));
-
-        // null -> returns false
-        assertFalse(standardCommand.equals(null));
-
-        // different types -> returns false
-        assertFalse(standardCommand.equals(new ClearCommand()));
-
-        // different index -> returns false
-        assertFalse(standardCommand.equals(new EditCommand(INDEX_SECOND_PERSON, DESC_AMY)));
-
-        // different descriptor -> returns false
-        assertFalse(standardCommand.equals(new EditCommand(INDEX_FIRST_PERSON, DESC_BOB)));
-    }
-
 }

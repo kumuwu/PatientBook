@@ -12,12 +12,16 @@ import javafx.scene.input.KeyCode;
 import seedu.address.logic.Logic;
 import seedu.address.logic.LogicManager;
 import seedu.address.logic.commands.ListCommand;
-import seedu.address.model.Model;
-import seedu.address.model.ModelManager;
+import seedu.address.model.AddressBookModel;
+import seedu.address.model.AddressBookModelManager;
+import seedu.address.model.DiagnosisModel;
+import seedu.address.model.DiagnosisModelManager;
+import seedu.address.model.ScheduleModel;
+import seedu.address.model.ScheduleModelManager;
 
 public class CommandBoxTest extends GuiUnitTest {
 
-    private static final String COMMAND_THAT_SUCCEEDS = ListCommand.COMMAND_WORD;
+    private static final String COMMAND_THAT_SUCCEEDS = ListCommand.COMMAND_WORD + " patient";
     private static final String COMMAND_THAT_FAILS = "invalid command";
 
     private ArrayList<String> defaultStyleOfCommandBox;
@@ -27,8 +31,10 @@ public class CommandBoxTest extends GuiUnitTest {
 
     @Before
     public void setUp() {
-        Model model = new ModelManager();
-        Logic logic = new LogicManager(model);
+        AddressBookModel addressBookModel = new AddressBookModelManager();
+        ScheduleModel scheduleModel = new ScheduleModelManager();
+        DiagnosisModel diagnosisModel = new DiagnosisModelManager();
+        Logic logic = new LogicManager(addressBookModel, scheduleModel, diagnosisModel);
 
         CommandBox commandBox = new CommandBox(logic);
         commandBoxHandle = new CommandBoxHandle(getChildNode(commandBox.getRoot(),
@@ -46,6 +52,7 @@ public class CommandBoxTest extends GuiUnitTest {
         assertBehaviorForSuccessfulCommand();
         assertBehaviorForFailedCommand();
     }
+
 
     @Test
     public void commandBox_startingWithFailedCommand() {
@@ -91,7 +98,7 @@ public class CommandBoxTest extends GuiUnitTest {
 
         // insert command in the middle of retrieving previous commands
         guiRobot.push(KeyCode.UP);
-        String thirdCommand = "list";
+        String thirdCommand = "list patient";
         commandBoxHandle.run(thirdCommand);
         assertInputHistory(KeyCode.UP, thirdCommand);
         assertInputHistory(KeyCode.UP, COMMAND_THAT_FAILS);

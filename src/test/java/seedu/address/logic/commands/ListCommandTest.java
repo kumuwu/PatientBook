@@ -1,41 +1,45 @@
 package seedu.address.logic.commands;
 
-import static seedu.address.logic.commands.CommandTestUtil.assertCommandSuccess;
-import static seedu.address.logic.commands.CommandTestUtil.showPersonAtIndex;
-import static seedu.address.testutil.TypicalIndexes.INDEX_FIRST_PERSON;
-import static seedu.address.testutil.TypicalPersons.getTypicalAddressBook;
+import static org.junit.Assert.assertEquals;
+import static seedu.address.logic.parser.CmdTypeCliSyntax.CMDTYPE_DISEASE;
 
-import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 
 import seedu.address.logic.CommandHistory;
-import seedu.address.model.Model;
-import seedu.address.model.ModelManager;
-import seedu.address.model.UserPrefs;
+import seedu.address.model.AddressBookModel;
+import seedu.address.model.AddressBookModelManager;
+import seedu.address.model.DiagnosisModel;
+import seedu.address.model.DiagnosisModelManager;
+import seedu.address.model.ScheduleModel;
+import seedu.address.model.ScheduleModelManager;
 
-/**
- * Contains integration tests (interaction with the Model) and unit tests for ListCommand.
- */
 public class ListCommandTest {
-
-    private Model model;
-    private Model expectedModel;
-    private CommandHistory commandHistory = new CommandHistory();
-
-    @Before
-    public void setUp() {
-        model = new ModelManager(getTypicalAddressBook(), new UserPrefs());
-        expectedModel = new ModelManager(model.getAddressBook(), new UserPrefs());
-    }
+    @Rule
+    public ExpectedException thrown = ExpectedException.none();
 
     @Test
-    public void execute_listIsNotFiltered_showsSameList() {
-        assertCommandSuccess(new ListCommand(), model, commandHistory, ListCommand.MESSAGE_SUCCESS, expectedModel);
+    public void listDisease_success() throws Exception {
+        DiagnosisModel diagnosisModel = new DiagnosisModelManager();
+        CommandResult commandResult = new CommandResult(ListCommand.FOUND_THE_FOLLOWING_DISEASE
+                + CommandResult.convertListToString(diagnosisModel.getDiseases()));
+        assertEquals(commandResult, testDiagnosisModel(diagnosisModel));
     }
 
-    @Test
-    public void execute_listIsFiltered_showsEverything() {
-        showPersonAtIndex(model, INDEX_FIRST_PERSON);
-        assertCommandSuccess(new ListCommand(), model, commandHistory, ListCommand.MESSAGE_SUCCESS, expectedModel);
+    /**
+     * Tests diagnosis model
+     *
+     * @throws Exception
+     */
+    private CommandResult testDiagnosisModel(DiagnosisModel diagnosisModel) throws Exception {
+        AddressBookModel addressBookModel = new AddressBookModelManager();
+        ScheduleModel scheduleModel = new ScheduleModelManager();
+        CommandHistory commandHistory = new CommandHistory();
+
+        ListCommand cmd = new ListCommand(CMDTYPE_DISEASE, ListCommand.GET_ALL_WORD);
+
+        return cmd.execute(addressBookModel, scheduleModel, diagnosisModel, commandHistory);
     }
+
 }

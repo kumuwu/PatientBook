@@ -1,177 +1,142 @@
 package seedu.address.logic.commands;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
-import static seedu.address.logic.commands.CommandTestUtil.assertCommandFailure;
-import static seedu.address.logic.commands.CommandTestUtil.assertCommandSuccess;
-import static seedu.address.logic.commands.CommandTestUtil.showPersonAtIndex;
-import static seedu.address.testutil.TypicalIndexes.INDEX_FIRST_PERSON;
-import static seedu.address.testutil.TypicalIndexes.INDEX_SECOND_PERSON;
-import static seedu.address.testutil.TypicalPersons.getTypicalAddressBook;
+import static seedu.address.logic.commands.DeleteCommand.MESSAGE_INVALID_PERSON_ID;
+import static seedu.address.logic.parser.CmdTypeCliSyntax.CMDTYPE_APPOINTMENT;
+import static seedu.address.logic.parser.CmdTypeCliSyntax.CMDTYPE_PATIENT;
+import static seedu.address.model.AddressBookModel.PREDICATE_SHOW_ALL_PERSONS;
 
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 
-import seedu.address.commons.core.Messages;
-import seedu.address.commons.core.index.Index;
 import seedu.address.logic.CommandHistory;
-import seedu.address.model.Model;
-import seedu.address.model.ModelManager;
-import seedu.address.model.UserPrefs;
+import seedu.address.logic.commands.exceptions.CommandException;
+import seedu.address.model.AddressBookModel;
+import seedu.address.model.AddressBookModelManager;
+import seedu.address.model.DiagnosisModel;
+import seedu.address.model.DiagnosisModelManager;
+import seedu.address.model.ScheduleModel;
+import seedu.address.model.ScheduleModelManager;
 import seedu.address.model.person.Person;
+import seedu.address.model.person.PersonId;
+import seedu.address.testutil.PersonBuilder;
 
 /**
- * Contains integration tests (interaction with the Model, UndoCommand and RedoCommand) and unit tests for
- * {@code DeleteCommand}.
+ * Tests delete command.
  */
 public class DeleteCommandTest {
-
-    private Model model = new ModelManager(getTypicalAddressBook(), new UserPrefs());
-    private CommandHistory commandHistory = new CommandHistory();
+    @Rule
+    public ExpectedException thrown = ExpectedException.none();
 
     @Test
-    public void execute_validIndexUnfilteredList_success() {
-        Person personToDelete = model.getFilteredPersonList().get(INDEX_FIRST_PERSON.getZeroBased());
-        DeleteCommand deleteCommand = new DeleteCommand(INDEX_FIRST_PERSON);
-
-        String expectedMessage = String.format(DeleteCommand.MESSAGE_DELETE_PERSON_SUCCESS, personToDelete);
-
-        ModelManager expectedModel = new ModelManager(model.getAddressBook(), new UserPrefs());
-        expectedModel.deletePerson(personToDelete);
-        expectedModel.commitAddressBook();
-
-        assertCommandSuccess(deleteCommand, model, commandHistory, expectedMessage, expectedModel);
+    public void delete_patient_success() throws Exception {
+        AddressBookModel model = new AddressBookModelManager();
+        Person person = new PersonBuilder().build();
+        model.addPerson(person);
+        PersonId personId = person.getId();
+        assertDeletePatientSuccess(model, personId.toString());
     }
 
     @Test
-    public void execute_invalidIndexUnfilteredList_throwsCommandException() {
-        Index outOfBoundIndex = Index.fromOneBased(model.getFilteredPersonList().size() + 1);
-        DeleteCommand deleteCommand = new DeleteCommand(outOfBoundIndex);
+    public void deletePatient_invalidId_throwsCommandException() throws Exception {
+        thrown.expect(CommandException.class);
+        thrown.expectMessage(MESSAGE_INVALID_PERSON_ID);
+        AddressBookModel model = new AddressBookModelManager();
 
-        assertCommandFailure(deleteCommand, model, commandHistory, Messages.MESSAGE_INVALID_PERSON_DISPLAYED_INDEX);
+        triggerDeletePatientFailure(model, "invalidID");
     }
 
     @Test
-    public void execute_validIndexFilteredList_success() {
-        showPersonAtIndex(model, INDEX_FIRST_PERSON);
+    public void deletePatient_idNonExistent_throwsCommandException() throws Exception {
+        thrown.expect(CommandException.class);
 
-        Person personToDelete = model.getFilteredPersonList().get(INDEX_FIRST_PERSON.getZeroBased());
-        DeleteCommand deleteCommand = new DeleteCommand(INDEX_FIRST_PERSON);
+        // these two people have different IDs as the PersonID assigned is a static variable
+        // which is incremented after p1 is instantiated.
+        Person p1 = new PersonBuilder().build();
+        Person p2 = new PersonBuilder().build();
 
-        String expectedMessage = String.format(DeleteCommand.MESSAGE_DELETE_PERSON_SUCCESS, personToDelete);
+        thrown.expectMessage(String.format(DeleteCommand.MESSAGE_PERSON_ID_NOT_FOUND,
+                p2.getId().toString()));
 
-        Model expectedModel = new ModelManager(model.getAddressBook(), new UserPrefs());
-        expectedModel.deletePerson(personToDelete);
-        expectedModel.commitAddressBook();
-        showNoPerson(expectedModel);
+        AddressBookModel model = new AddressBookModelManager();
+        model.addPerson(p1);
 
-        assertCommandSuccess(deleteCommand, model, commandHistory, expectedMessage, expectedModel);
+        triggerDeletePatientFailure(model, p2.getId().toString());
     }
 
     @Test
-    public void execute_invalidIndexFilteredList_throwsCommandException() {
-        showPersonAtIndex(model, INDEX_FIRST_PERSON);
+    public void delete_invalidCmdType() throws Exception {
+        thrown.expect(CommandException.class);
+        thrown.expectMessage(DeleteCommand.MESSAGE_UNEXPECTED_CMDTYPE);
 
-        Index outOfBoundIndex = INDEX_SECOND_PERSON;
-        // ensures that outOfBoundIndex is still in bounds of address book list
-        assertTrue(outOfBoundIndex.getZeroBased() < model.getAddressBook().getPersonList().size());
-
-        DeleteCommand deleteCommand = new DeleteCommand(outOfBoundIndex);
-
-        assertCommandFailure(deleteCommand, model, commandHistory, Messages.MESSAGE_INVALID_PERSON_DISPLAYED_INDEX);
+        new DeleteCommand("invalid", "ignored")
+                .execute(new AddressBookModelManager(),
+                        new ScheduleModelManager(),
+                        new DiagnosisModelManager(),
+                        new CommandHistory());
     }
 
     @Test
-    public void executeUndoRedo_validIndexUnfilteredList_success() throws Exception {
-        Person personToDelete = model.getFilteredPersonList().get(INDEX_FIRST_PERSON.getZeroBased());
-        DeleteCommand deleteCommand = new DeleteCommand(INDEX_FIRST_PERSON);
-        Model expectedModel = new ModelManager(model.getAddressBook(), new UserPrefs());
-        expectedModel.deletePerson(personToDelete);
-        expectedModel.commitAddressBook();
+    public void checkEqual() {
+        DeleteCommand deleteCommand = new DeleteCommand(CMDTYPE_PATIENT, "dummy");
+        DeleteCommand deleteCommand1 = new DeleteCommand(CMDTYPE_PATIENT, "dummy");
+        DeleteCommand deleteCommand2 = new DeleteCommand(CMDTYPE_APPOINTMENT, "dummy");
 
-        // delete -> first person deleted
-        deleteCommand.execute(model, commandHistory);
-
-        // undo -> reverts addressbook back to previous state and filtered person list to show all persons
-        expectedModel.undoAddressBook();
-        assertCommandSuccess(new UndoCommand(), model, commandHistory, UndoCommand.MESSAGE_SUCCESS, expectedModel);
-
-        // redo -> same first person deleted again
-        expectedModel.redoAddressBook();
-        assertCommandSuccess(new RedoCommand(), model, commandHistory, RedoCommand.MESSAGE_SUCCESS, expectedModel);
-    }
-
-    @Test
-    public void executeUndoRedo_invalidIndexUnfilteredList_failure() {
-        Index outOfBoundIndex = Index.fromOneBased(model.getFilteredPersonList().size() + 1);
-        DeleteCommand deleteCommand = new DeleteCommand(outOfBoundIndex);
-
-        // execution failed -> address book state not added into model
-        assertCommandFailure(deleteCommand, model, commandHistory, Messages.MESSAGE_INVALID_PERSON_DISPLAYED_INDEX);
-
-        // single address book state in model -> undoCommand and redoCommand fail
-        assertCommandFailure(new UndoCommand(), model, commandHistory, UndoCommand.MESSAGE_FAILURE);
-        assertCommandFailure(new RedoCommand(), model, commandHistory, RedoCommand.MESSAGE_FAILURE);
+        assertEquals(deleteCommand, deleteCommand1);
+        assertNotEquals(deleteCommand1, deleteCommand2);
     }
 
     /**
-     * 1. Deletes a {@code Person} from a filtered list.
-     * 2. Undo the deletion.
-     * 3. The unfiltered list should be shown now. Verify that the index of the previously deleted person in the
-     * unfiltered list is different from the index at the filtered list.
-     * 4. Redo the deletion. This ensures {@code RedoCommand} deletes the person object regardless of indexing.
+     * makes sure that the deleting is successful
+     *
+     * @param addressBookModel address book model
+     * @param target target for deletion
+     * @throws Exception
      */
-    @Test
-    public void executeUndoRedo_validIndexFilteredList_samePersonDeleted() throws Exception {
-        DeleteCommand deleteCommand = new DeleteCommand(INDEX_FIRST_PERSON);
-        Model expectedModel = new ModelManager(model.getAddressBook(), new UserPrefs());
+    private void assertDeletePatientSuccess(AddressBookModel addressBookModel, String target)
+            throws Exception {
 
-        showPersonAtIndex(model, INDEX_SECOND_PERSON);
-        Person personToDelete = model.getFilteredPersonList().get(INDEX_FIRST_PERSON.getZeroBased());
-        expectedModel.deletePerson(personToDelete);
-        expectedModel.commitAddressBook();
+        ScheduleModel scheduleModel = new ScheduleModelManager();
+        DiagnosisModel diagnosisModel = new DiagnosisModelManager();
+        CommandHistory commandHistory = new CommandHistory();
 
-        // delete -> deletes second person in unfiltered person list / first person in filtered person list
-        deleteCommand.execute(model, commandHistory);
+        DeleteCommand cmd = new DeleteCommand(CMDTYPE_PATIENT, target);
 
-        // undo -> reverts addressbook back to previous state and filtered person list to show all persons
-        expectedModel.undoAddressBook();
-        assertCommandSuccess(new UndoCommand(), model, commandHistory, UndoCommand.MESSAGE_SUCCESS, expectedModel);
+        CommandResult result = cmd.execute(addressBookModel, scheduleModel,
+                diagnosisModel, commandHistory);
 
-        assertNotEquals(personToDelete, model.getFilteredPersonList().get(INDEX_FIRST_PERSON.getZeroBased()));
-        // redo -> deletes same second person in unfiltered person list
-        expectedModel.redoAddressBook();
-        assertCommandSuccess(new RedoCommand(), model, commandHistory, RedoCommand.MESSAGE_SUCCESS, expectedModel);
-    }
+        addressBookModel.updateFilteredPersonList(PREDICATE_SHOW_ALL_PERSONS);
 
-    @Test
-    public void equals() {
-        DeleteCommand deleteFirstCommand = new DeleteCommand(INDEX_FIRST_PERSON);
-        DeleteCommand deleteSecondCommand = new DeleteCommand(INDEX_SECOND_PERSON);
-
-        // same object -> returns true
-        assertTrue(deleteFirstCommand.equals(deleteFirstCommand));
-
-        // same values -> returns true
-        DeleteCommand deleteFirstCommandCopy = new DeleteCommand(INDEX_FIRST_PERSON);
-        assertTrue(deleteFirstCommand.equals(deleteFirstCommandCopy));
-
-        // different types -> returns false
-        assertFalse(deleteFirstCommand.equals(1));
-
-        // null -> returns false
-        assertFalse(deleteFirstCommand.equals(null));
-
-        // different person -> returns false
-        assertFalse(deleteFirstCommand.equals(deleteSecondCommand));
+        // the first and only entry should still be present, but soft-deleted
+        // it should also produce the correct success message.
+        assertTrue(addressBookModel.getFilteredPersonList().size() == 1);
+        assertFalse(addressBookModel.getFilteredPersonList().get(0).getExists());
+        assertEquals(result, new CommandResult(String.format(DeleteCommand.MESSAGE_DELETE_PERSON_SUCCESS,
+                target)));
     }
 
     /**
-     * Updates {@code model}'s filtered list to show no one.
+     * Triggers delete failure
+     *
+     * @param addressBookModel address book model
+     * @param target           target for deletion
+     * @throws Exception
      */
-    private void showNoPerson(Model model) {
-        model.updateFilteredPersonList(p -> false);
+    private void triggerDeletePatientFailure(AddressBookModel addressBookModel, String target)
+            throws Exception {
 
-        assertTrue(model.getFilteredPersonList().isEmpty());
+        ScheduleModel scheduleModel = new ScheduleModelManager();
+        DiagnosisModel diagnosisModel = new DiagnosisModelManager();
+        CommandHistory commandHistory = new CommandHistory();
+
+        DeleteCommand cmd = new DeleteCommand(CMDTYPE_PATIENT, target);
+
+        cmd.execute(addressBookModel, scheduleModel, diagnosisModel, commandHistory);
+
     }
+
 }

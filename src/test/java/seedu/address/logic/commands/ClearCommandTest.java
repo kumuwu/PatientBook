@@ -1,37 +1,55 @@
 package seedu.address.logic.commands;
 
-import static seedu.address.logic.commands.CommandTestUtil.assertCommandSuccess;
-import static seedu.address.testutil.TypicalPersons.getTypicalAddressBook;
+import static org.junit.Assert.assertEquals;
+import static seedu.address.logic.parser.CmdTypeCliSyntax.CMDTYPE_APPOINTMENT;
+import static seedu.address.logic.parser.CmdTypeCliSyntax.CMDTYPE_PATIENT;
 
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 
 import seedu.address.logic.CommandHistory;
-import seedu.address.model.AddressBook;
-import seedu.address.model.Model;
-import seedu.address.model.ModelManager;
-import seedu.address.model.UserPrefs;
+import seedu.address.logic.commands.exceptions.CommandException;
+import seedu.address.model.AddressBookModel;
+import seedu.address.model.AddressBookModelManager;
+import seedu.address.model.DiagnosisModel;
+import seedu.address.model.DiagnosisModelManager;
+import seedu.address.model.ScheduleModel;
+import seedu.address.model.ScheduleModelManager;
 
 public class ClearCommandTest {
-
-    private CommandHistory commandHistory = new CommandHistory();
+    @Rule
+    public ExpectedException thrown = ExpectedException.none();
 
     @Test
-    public void execute_emptyAddressBook_success() {
-        Model model = new ModelManager();
-        Model expectedModel = new ModelManager();
-        expectedModel.commitAddressBook();
+    public void clear_schedule_success() throws Exception {
 
-        assertCommandSuccess(new ClearCommand(), model, commandHistory, ClearCommand.MESSAGE_SUCCESS, expectedModel);
+        AddressBookModel addressBookModel = new AddressBookModelManager();
+        ScheduleModel scheduleModel = new ScheduleModelManager();
+        DiagnosisModel diagnosisModel = new DiagnosisModelManager();
+        CommandHistory commandHistory = new CommandHistory();
+
+        // TODO: add a couple scheduleEvent objects here
+
+        ClearCommand cmd = new ClearCommand(CMDTYPE_APPOINTMENT);
+        CommandResult result = cmd.execute(addressBookModel, scheduleModel,
+                diagnosisModel, commandHistory);
+
+        // we check that the scheduleModel looks like a new one and is empty.
+        assertEquals(scheduleModel, new ScheduleModelManager());
+        assertEquals(result, new CommandResult(ClearCommand.MESSAGE_SUCCESS));
     }
 
     @Test
-    public void execute_nonEmptyAddressBook_success() {
-        Model model = new ModelManager(getTypicalAddressBook(), new UserPrefs());
-        Model expectedModel = new ModelManager(getTypicalAddressBook(), new UserPrefs());
-        expectedModel.resetData(new AddressBook());
-        expectedModel.commitAddressBook();
+    public void clear_invalidParameter_throwsCommandException() throws Exception {
+        thrown.expect(CommandException.class);
+        thrown.expectMessage(ClearCommand.MESSAGE_UNEXPECTED_PARAMETER);
 
-        assertCommandSuccess(new ClearCommand(), model, commandHistory, ClearCommand.MESSAGE_SUCCESS, expectedModel);
+        // we don't allow clearing the address book, by nature of this application
+        new ClearCommand(CMDTYPE_PATIENT).execute(new AddressBookModelManager(),
+                new ScheduleModelManager(),
+                new DiagnosisModelManager(),
+                new CommandHistory());
     }
 
 }

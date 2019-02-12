@@ -1,29 +1,38 @@
 package seedu.address.logic;
 
 import static org.junit.Assert.assertEquals;
-import static seedu.address.commons.core.Messages.MESSAGE_INVALID_PERSON_DISPLAYED_INDEX;
 import static seedu.address.commons.core.Messages.MESSAGE_UNKNOWN_COMMAND;
+import static seedu.address.logic.parser.CmdTypeCliSyntax.CMDTYPE_PATIENT;
 
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
 import seedu.address.logic.commands.CommandResult;
+import seedu.address.logic.commands.DeleteCommand;
 import seedu.address.logic.commands.HistoryCommand;
 import seedu.address.logic.commands.ListCommand;
 import seedu.address.logic.commands.exceptions.CommandException;
 import seedu.address.logic.parser.exceptions.ParseException;
-import seedu.address.model.Model;
-import seedu.address.model.ModelManager;
+import seedu.address.model.AddressBookModel;
+import seedu.address.model.AddressBookModelManager;
+import seedu.address.model.DiagnosisModel;
+import seedu.address.model.DiagnosisModelManager;
+import seedu.address.model.ScheduleModel;
+import seedu.address.model.ScheduleModelManager;
 import seedu.address.model.UserPrefs;
 
-
+/**
+ * Tests the logic manager.
+ */
 public class LogicManagerTest {
     @Rule
     public ExpectedException thrown = ExpectedException.none();
 
-    private Model model = new ModelManager();
-    private Logic logic = new LogicManager(model);
+    private AddressBookModel addressBookModel = new AddressBookModelManager();
+    private ScheduleModel scheduleModel = new ScheduleModelManager();
+    private DiagnosisModel diagnosisModel = new DiagnosisModelManager();
+    private Logic logic = new LogicManager(addressBookModel, scheduleModel, diagnosisModel);
 
     @Test
     public void execute_invalidCommandFormat_throwsParseException() {
@@ -34,15 +43,15 @@ public class LogicManagerTest {
 
     @Test
     public void execute_commandExecutionError_throwsCommandException() {
-        String deleteCommand = "delete 9";
-        assertCommandException(deleteCommand, MESSAGE_INVALID_PERSON_DISPLAYED_INDEX);
+        String deleteCommand = "delete patient p9001";
+        assertCommandException(deleteCommand, String.format(DeleteCommand.MESSAGE_PERSON_ID_NOT_FOUND, "p9001"));
         assertHistoryCorrect(deleteCommand);
     }
 
     @Test
     public void execute_validCommand_success() {
-        String listCommand = ListCommand.COMMAND_WORD;
-        assertCommandSuccess(listCommand, ListCommand.MESSAGE_SUCCESS, model);
+        String listCommand = ListCommand.COMMAND_WORD + " " + CMDTYPE_PATIENT;
+        assertCommandSuccess(listCommand, ListCommand.MESSAGE_PERSON_SUCCESS, addressBookModel);
         assertHistoryCorrect(listCommand);
     }
 
@@ -54,16 +63,17 @@ public class LogicManagerTest {
 
     /**
      * Executes the command, confirms that no exceptions are thrown and that the result message is correct.
-     * Also confirms that {@code expectedModel} is as specified.
-     * @see #assertCommandBehavior(Class, String, String, Model)
+     * Also confirms that {@code expectedAddressBookModel} is as specified.
+     * @see #assertCommandBehavior(Class, String, String, AddressBookModel)
      */
-    private void assertCommandSuccess(String inputCommand, String expectedMessage, Model expectedModel) {
-        assertCommandBehavior(null, inputCommand, expectedMessage, expectedModel);
+    private void assertCommandSuccess(String inputCommand, String expectedMessage,
+                                      AddressBookModel expectedAddressBookModel) {
+        assertCommandBehavior(null, inputCommand, expectedMessage, expectedAddressBookModel);
     }
 
     /**
      * Executes the command, confirms that a ParseException is thrown and that the result message is correct.
-     * @see #assertCommandBehavior(Class, String, String, Model)
+     * @see #assertCommandBehavior(Class, String, String, AddressBookModel)
      */
     private void assertParseException(String inputCommand, String expectedMessage) {
         assertCommandFailure(inputCommand, ParseException.class, expectedMessage);
@@ -71,7 +81,7 @@ public class LogicManagerTest {
 
     /**
      * Executes the command, confirms that a CommandException is thrown and that the result message is correct.
-     * @see #assertCommandBehavior(Class, String, String, Model)
+     * @see #assertCommandBehavior(Class, String, String, AddressBookModel)
      */
     private void assertCommandException(String inputCommand, String expectedMessage) {
         assertCommandFailure(inputCommand, CommandException.class, expectedMessage);
@@ -79,21 +89,22 @@ public class LogicManagerTest {
 
     /**
      * Executes the command, confirms that the exception is thrown and that the result message is correct.
-     * @see #assertCommandBehavior(Class, String, String, Model)
+     * @see #assertCommandBehavior(Class, String, String, AddressBookModel)
      */
     private void assertCommandFailure(String inputCommand, Class<?> expectedException, String expectedMessage) {
-        Model expectedModel = new ModelManager(model.getAddressBook(), new UserPrefs());
-        assertCommandBehavior(expectedException, inputCommand, expectedMessage, expectedModel);
+        AddressBookModel expectedAddressBookModel = new AddressBookModelManager(
+                addressBookModel.getAddressBook(), new UserPrefs());
+        assertCommandBehavior(expectedException, inputCommand, expectedMessage, expectedAddressBookModel);
     }
 
     /**
      * Executes the command, confirms that the result message is correct and that the expected exception is thrown,
      * and also confirms that the following two parts of the LogicManager object's state are as expected:<br>
-     *      - the internal model manager data are same as those in the {@code expectedModel} <br>
-     *      - {@code expectedModel}'s address book was saved to the storage file.
+     *      - the internal addressBookModel manager data are same as those in the {@code expectedAddressBookModel} <br>
+     *      - {@code expectedAddressBookModel}'s address book was saved to the storage file.
      */
     private void assertCommandBehavior(Class<?> expectedException, String inputCommand,
-                                           String expectedMessage, Model expectedModel) {
+                                           String expectedMessage, AddressBookModel expectedAddressBookModel) {
 
         try {
             CommandResult result = logic.execute(inputCommand);
@@ -104,7 +115,7 @@ public class LogicManagerTest {
             assertEquals(expectedMessage, e.getMessage());
         }
 
-        assertEquals(expectedModel, model);
+        assertEquals(expectedAddressBookModel, addressBookModel);
     }
 
     /**
@@ -118,7 +129,8 @@ public class LogicManagerTest {
                     HistoryCommand.MESSAGE_SUCCESS, String.join("\n", expectedCommands));
             assertEquals(expectedMessage, result.feedbackToUser);
         } catch (ParseException | CommandException e) {
-            throw new AssertionError("Parsing and execution of HistoryCommand.COMMAND_WORD should succeed.", e);
+            throw new AssertionError(
+                    "Parsing and execution of HistoryCommand.COMMAND_WORD should succeed.", e);
         }
     }
 }

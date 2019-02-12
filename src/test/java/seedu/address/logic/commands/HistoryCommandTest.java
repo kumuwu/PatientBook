@@ -1,35 +1,48 @@
 package seedu.address.logic.commands;
 
-import static seedu.address.logic.commands.CommandTestUtil.assertCommandSuccess;
+import static org.junit.Assert.assertEquals;
 
+import java.util.Collections;
+import java.util.LinkedList;
+import java.util.List;
+
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 
 import seedu.address.logic.CommandHistory;
-import seedu.address.model.Model;
-import seedu.address.model.ModelManager;
+import seedu.address.model.AddressBookModelManager;
+import seedu.address.model.DiagnosisModelManager;
+import seedu.address.model.ScheduleModelManager;
 
 public class HistoryCommandTest {
-    private CommandHistory history = new CommandHistory();
-    private Model model = new ModelManager();
-    private Model expectedModel = new ModelManager();
+    @Rule
+    public ExpectedException test = ExpectedException.none();
 
     @Test
-    public void execute() {
-        assertCommandSuccess(new HistoryCommand(), model, history, HistoryCommand.MESSAGE_NO_HISTORY, expectedModel);
+    public void history_success() {
+        // empty history
+        assertEquals(new HistoryCommand().execute(new AddressBookModelManager(),
+                new ScheduleModelManager(),
+                new DiagnosisModelManager(),
+                new CommandHistory()), new CommandResult(HistoryCommand.MESSAGE_NO_HISTORY));
 
-        String command1 = "clear";
-        history.add(command1);
-        assertCommandSuccess(new HistoryCommand(), model, history,
-                String.format(HistoryCommand.MESSAGE_SUCCESS, command1), expectedModel);
+        // non-empty history
+        CommandHistory history = new CommandHistory();
+        List<String> commands = new LinkedList<>();
+        commands.add("cmd1");
+        commands.add("cmd2");
+        commands.add("cmd3");
 
-        String command2 = "randomCommand";
-        String command3 = "select 1";
-        history.add(command2);
-        history.add(command3);
+        commands.stream().forEach(s -> history.add(s));
 
-        String expectedMessage = String.format(HistoryCommand.MESSAGE_SUCCESS,
-                String.join("\n", command3, command2, command1));
-        assertCommandSuccess(new HistoryCommand(), model, history, expectedMessage, expectedModel);
+        List<String> previousCommands = history.getHistory();
+        Collections.reverse(previousCommands);
+        assertEquals(new HistoryCommand().execute(new AddressBookModelManager(),
+                new ScheduleModelManager(),
+                new DiagnosisModelManager(),
+                history),
+                new CommandResult(String.format(HistoryCommand.MESSAGE_SUCCESS,
+                        String.join("\n", previousCommands))));
     }
-
 }

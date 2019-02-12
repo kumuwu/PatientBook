@@ -14,6 +14,8 @@ import seedu.address.commons.core.ComponentManager;
 import seedu.address.commons.core.Config;
 import seedu.address.commons.core.LogsCenter;
 import seedu.address.commons.events.storage.DataSavingExceptionEvent;
+import seedu.address.commons.events.ui.SwitchToAppointmentEvent;
+import seedu.address.commons.events.ui.SwitchToPatientEvent;
 import seedu.address.commons.util.StringUtil;
 import seedu.address.logic.Logic;
 import seedu.address.model.UserPrefs;
@@ -36,7 +38,7 @@ public class UiManager extends ComponentManager implements Ui {
     private Config config;
     private UserPrefs prefs;
     private MainWindow mainWindow;
-
+    private AppointmentMainWindow appointmentMainWindow;
     public UiManager(Logic logic, Config config, UserPrefs prefs) {
         super();
         this.logic = logic;
@@ -45,15 +47,19 @@ public class UiManager extends ComponentManager implements Ui {
     }
 
     @Override
-    public void start(Stage primaryStage) {
+    public void start(Stage primaryStage, Stage secondaryStage) {
         logger.info("Starting UI...");
 
         //Set the application icon.
         primaryStage.getIcons().add(getImage(ICON_APPLICATION));
 
         try {
+            appointmentMainWindow = new AppointmentMainWindow(secondaryStage, config, prefs, logic);
+            appointmentMainWindow.fillInnerParts();
+            appointmentMainWindow.hide();
             mainWindow = new MainWindow(primaryStage, config, prefs, logic);
             mainWindow.show(); //This should be called before creating other UI parts
+            mainWindow.setShowing(true);
             mainWindow.fillInnerParts();
 
         } catch (Throwable e) {
@@ -63,10 +69,42 @@ public class UiManager extends ComponentManager implements Ui {
     }
 
     @Override
+    public void switchToAppointment() {
+        logger.info("Switching to Appointment Mode");
+
+        try {
+            appointmentMainWindow.show();
+            appointmentMainWindow.setShowing(true);
+            appointmentMainWindow.setNotePanelToDefault();
+            mainWindow.hide();
+            mainWindow.setShowing(false);
+        } catch (Throwable e) {
+            logger.severe(StringUtil.getDetails(e));
+            showFatalErrorDialogAndShutdown("Fatal error during switching", e);
+        }
+    }
+
+    @Override
+    public void switchToPatient() {
+        logger.info("Switching to Patient Mode");
+
+        try {
+            mainWindow.show();
+            mainWindow.setShowing(true);
+            mainWindow.setBrowsePanelToDefault();
+            appointmentMainWindow.hide();
+            appointmentMainWindow.setShowing(false);
+        } catch (Throwable e) {
+            logger.severe(StringUtil.getDetails(e));
+            showFatalErrorDialogAndShutdown("Fatal error during switching", e);
+        }
+    }
+
+    @Override
     public void stop() {
         prefs.updateLastUsedGuiSetting(mainWindow.getCurrentGuiSetting());
         mainWindow.hide();
-        mainWindow.releaseResources();
+        mainWindow.setShowing(false);
     }
 
     private void showFileOperationAlertAndWait(String description, String details, Throwable cause) {
@@ -116,5 +154,17 @@ public class UiManager extends ComponentManager implements Ui {
         logger.info(LogsCenter.getEventHandlingLogMessage(event));
         showFileOperationAlertAndWait(FILE_OPS_ERROR_DIALOG_HEADER_MESSAGE, FILE_OPS_ERROR_DIALOG_CONTENT_MESSAGE,
                 event.exception);
+    }
+
+    @Subscribe
+    private void handleSwitchToAppointmentEvent(SwitchToAppointmentEvent event) {
+        logger.info(LogsCenter.getEventHandlingLogMessage(event));
+        switchToAppointment();
+    }
+
+    @Subscribe
+    private void handleSwitchToPatientEvent (SwitchToPatientEvent event) {
+        logger.info(LogsCenter.getEventHandlingLogMessage(event));
+        switchToPatient();
     }
 }

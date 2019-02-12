@@ -15,6 +15,7 @@ import javafx.stage.Stage;
 import seedu.address.commons.core.Config;
 import seedu.address.commons.core.GuiSettings;
 import seedu.address.commons.core.LogsCenter;
+import seedu.address.commons.events.model.AddressBookChangedEvent;
 import seedu.address.commons.events.ui.ExitAppRequestEvent;
 import seedu.address.commons.events.ui.ShowHelpRequestEvent;
 import seedu.address.logic.Logic;
@@ -27,21 +28,23 @@ import seedu.address.model.UserPrefs;
 public class MainWindow extends UiPart<Stage> {
 
     private static final String FXML = "MainWindow.fxml";
+    private static final String modeTitle = " : Patient Mode";
 
     private final Logger logger = LogsCenter.getLogger(getClass());
 
     private Stage primaryStage;
     private Logic logic;
+    private boolean isShowing;
 
     // Independent Ui parts residing in this Ui container
-    private BrowserPanel browserPanel;
+    private PersonBrowsePanel personBrowsePanel;
     private PersonListPanel personListPanel;
     private Config config;
     private UserPrefs prefs;
     private HelpWindow helpWindow;
 
     @FXML
-    private StackPane browserPlaceholder;
+    private StackPane personBrowsePlaceholder;
 
     @FXML
     private StackPane commandBoxPlaceholder;
@@ -66,6 +69,7 @@ public class MainWindow extends UiPart<Stage> {
         this.logic = logic;
         this.config = config;
         this.prefs = prefs;
+        this.isShowing = false;
 
         // Configure the UI
         setTitle(config.getAppTitle());
@@ -119,8 +123,8 @@ public class MainWindow extends UiPart<Stage> {
      * Fills up all the placeholders of this window.
      */
     void fillInnerParts() {
-        browserPanel = new BrowserPanel();
-        browserPlaceholder.getChildren().add(browserPanel.getRoot());
+        personBrowsePanel = new PersonBrowsePanel();
+        personBrowsePlaceholder.getChildren().add(personBrowsePanel.getRoot());
 
         personListPanel = new PersonListPanel(logic.getFilteredPersonList());
         personListPanelPlaceholder.getChildren().add(personListPanel.getRoot());
@@ -140,7 +144,7 @@ public class MainWindow extends UiPart<Stage> {
     }
 
     private void setTitle(String appTitle) {
-        primaryStage.setTitle(appTitle);
+        primaryStage.setTitle(appTitle + modeTitle);
     }
 
     /**
@@ -163,12 +167,16 @@ public class MainWindow extends UiPart<Stage> {
                 (int) primaryStage.getX(), (int) primaryStage.getY());
     }
 
+    public void setShowing(boolean showing) {
+        isShowing = showing;
+    }
+
     /**
      * Opens the help window or focuses on it if it's already opened.
      */
     @FXML
     public void handleHelp() {
-        if (!helpWindow.isShowing()) {
+        if (!helpWindow.isShowing() && isShowing) {
             helpWindow.show();
         } else {
             helpWindow.focus();
@@ -191,13 +199,19 @@ public class MainWindow extends UiPart<Stage> {
         return personListPanel;
     }
 
-    void releaseResources() {
-        browserPanel.freeResources();
+    public void setBrowsePanelToDefault() {
+        personBrowsePanel.loadDefaultBrowse();
     }
 
     @Subscribe
     private void handleShowHelpEvent(ShowHelpRequestEvent event) {
         logger.info(LogsCenter.getEventHandlingLogMessage(event));
         handleHelp();
+    }
+
+    @Subscribe
+    public void handleAddressBookChangedEvent(AddressBookChangedEvent event) {
+        personListPanel = new PersonListPanel(logic.getFilteredPersonList());
+        personListPanelPlaceholder.getChildren().add(personListPanel.getRoot());
     }
 }

@@ -2,11 +2,11 @@ package seedu.address.logic.commands;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import static seedu.address.logic.parser.CliSyntax.PREFIX_ADDRESS;
-import static seedu.address.logic.parser.CliSyntax.PREFIX_EMAIL;
-import static seedu.address.logic.parser.CliSyntax.PREFIX_NAME;
-import static seedu.address.logic.parser.CliSyntax.PREFIX_PHONE;
-import static seedu.address.logic.parser.CliSyntax.PREFIX_TAG;
+import static seedu.address.logic.parser.PersonCliSyntax.PREFIX_ADDRESS;
+import static seedu.address.logic.parser.PersonCliSyntax.PREFIX_EMAIL;
+import static seedu.address.logic.parser.PersonCliSyntax.PREFIX_NAME;
+import static seedu.address.logic.parser.PersonCliSyntax.PREFIX_PHONE;
+import static seedu.address.logic.parser.PersonCliSyntax.PREFIX_TAG;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -16,8 +16,10 @@ import seedu.address.commons.core.index.Index;
 import seedu.address.logic.CommandHistory;
 import seedu.address.logic.commands.exceptions.CommandException;
 import seedu.address.model.AddressBook;
-import seedu.address.model.Model;
-import seedu.address.model.person.NameContainsKeywordsPredicate;
+import seedu.address.model.AddressBookModel;
+import seedu.address.model.DiagnosisModel;
+import seedu.address.model.ScheduleModel;
+import seedu.address.model.person.MatchPersonPredicate;
 import seedu.address.model.person.Person;
 import seedu.address.testutil.EditPersonDescriptorBuilder;
 
@@ -54,8 +56,16 @@ public class CommandTestUtil {
     public static final String INVALID_ADDRESS_DESC = " " + PREFIX_ADDRESS; // empty string not allowed for addresses
     public static final String INVALID_TAG_DESC = " " + PREFIX_TAG + "hubby*"; // '*' not allowed in tags
 
+    public static final String INVALID_MOREINFO_INDEX_TOOLARGE = "10000"; // moreinfo rejects indices greater
+    // than 4 digits
+    public static final String INVALID_MOREINFO_INDEX_NON_POSITIVE_1 = "0"; // moreinfo indices must be positive
+    public static final String INVALID_MOREINFO_INDEX_NON_POSITIVE_2 = "-1"; // moreinfo indices must be positive
+    public static final String INVALID_MOREINFO_INDEX_NON_NUMERICAL_1 = "123abc"; // moreinfo indices not contain
+    // letters
+    public static final String INVALID_MOREINFO_INDEX_NON_NUMERICAL_2 = "contains spaces"; // moreinfo
+    // indices not contain spaces
+
     public static final String PREAMBLE_WHITESPACE = "\t  \r  \n";
-    public static final String PREAMBLE_NON_EMPTY = "NonEmptyPreamble";
 
     public static final EditCommand.EditPersonDescriptor DESC_AMY;
     public static final EditCommand.EditPersonDescriptor DESC_BOB;
@@ -75,11 +85,14 @@ public class CommandTestUtil {
      * - the {@code actualModel} matches {@code expectedModel} <br>
      * - the {@code actualCommandHistory} remains unchanged.
      */
-    public static void assertCommandSuccess(Command command, Model actualModel, CommandHistory actualCommandHistory,
-            String expectedMessage, Model expectedModel) {
+    public static void assertCommandSuccess(Command command, AddressBookModel actualModel,
+                                            ScheduleModel scheduleModel,
+                                            CommandHistory actualCommandHistory,
+                                            DiagnosisModel diagnosisModel,
+                                            String expectedMessage, AddressBookModel expectedModel) {
         CommandHistory expectedCommandHistory = new CommandHistory(actualCommandHistory);
         try {
-            CommandResult result = command.execute(actualModel, actualCommandHistory);
+            CommandResult result = command.execute(actualModel, scheduleModel, diagnosisModel, actualCommandHistory);
             assertEquals(expectedMessage, result.feedbackToUser);
             assertEquals(expectedModel, actualModel);
             assertEquals(expectedCommandHistory, actualCommandHistory);
@@ -95,8 +108,11 @@ public class CommandTestUtil {
      * - the address book and the filtered person list in the {@code actualModel} remain unchanged <br>
      * - {@code actualCommandHistory} remains unchanged.
      */
-    public static void assertCommandFailure(Command command, Model actualModel, CommandHistory actualCommandHistory,
-            String expectedMessage) {
+    public static void assertCommandFailure(Command command, AddressBookModel actualModel,
+                                            ScheduleModel scheduleModel,
+                                            DiagnosisModel diagnosisModel,
+                                            CommandHistory actualCommandHistory,
+                                            String expectedMessage) {
         // we are unable to defensively copy the model for comparison later, so we can
         // only do so by copying its components.
         AddressBook expectedAddressBook = new AddressBook(actualModel.getAddressBook());
@@ -105,7 +121,7 @@ public class CommandTestUtil {
         CommandHistory expectedCommandHistory = new CommandHistory(actualCommandHistory);
 
         try {
-            command.execute(actualModel, actualCommandHistory);
+            command.execute(actualModel, scheduleModel, diagnosisModel, actualCommandHistory);
             throw new AssertionError("The expected CommandException was not thrown.");
         } catch (CommandException e) {
             assertEquals(expectedMessage, e.getMessage());
@@ -119,12 +135,12 @@ public class CommandTestUtil {
      * Updates {@code model}'s filtered list to show only the person at the given {@code targetIndex} in the
      * {@code model}'s address book.
      */
-    public static void showPersonAtIndex(Model model, Index targetIndex) {
+    public static void showPersonAtIndex(AddressBookModel model, Index targetIndex) {
         assertTrue(targetIndex.getZeroBased() < model.getFilteredPersonList().size());
 
         Person person = model.getFilteredPersonList().get(targetIndex.getZeroBased());
         final String[] splitName = person.getName().fullName.split("\\s+");
-        model.updateFilteredPersonList(new NameContainsKeywordsPredicate(Arrays.asList(splitName[0])));
+        model.updateFilteredPersonList(new MatchPersonPredicate(Arrays.asList(splitName[0])));
 
         assertEquals(1, model.getFilteredPersonList().size());
     }
@@ -132,10 +148,8 @@ public class CommandTestUtil {
     /**
      * Deletes the first person in {@code model}'s filtered list from {@code model}'s address book.
      */
-    public static void deleteFirstPerson(Model model) {
+    public static void deleteFirstPerson(AddressBookModel model) {
         Person firstPerson = model.getFilteredPersonList().get(0);
         model.deletePerson(firstPerson);
-        model.commitAddressBook();
     }
-
 }

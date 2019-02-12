@@ -3,6 +3,7 @@ package seedu.address.storage;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static seedu.address.testutil.TypicalEvents.getTypicalSchedule;
 import static seedu.address.testutil.TypicalPersons.getTypicalAddressBook;
 
 import java.io.IOException;
@@ -18,6 +19,8 @@ import seedu.address.commons.events.model.AddressBookChangedEvent;
 import seedu.address.commons.events.storage.DataSavingExceptionEvent;
 import seedu.address.model.AddressBook;
 import seedu.address.model.ReadOnlyAddressBook;
+import seedu.address.model.ReadOnlySchedule;
+import seedu.address.model.Schedule;
 import seedu.address.model.UserPrefs;
 import seedu.address.ui.testutil.EventsCollectorRule;
 
@@ -33,8 +36,9 @@ public class StorageManagerTest {
     @Before
     public void setUp() {
         XmlAddressBookStorage addressBookStorage = new XmlAddressBookStorage(getTempFilePath("ab"));
+        XmlScheduleStorage scheduleStorage = new XmlScheduleStorage(getTempFilePath("s"));
         JsonUserPrefsStorage userPrefsStorage = new JsonUserPrefsStorage(getTempFilePath("prefs"));
-        storageManager = new StorageManager(addressBookStorage, userPrefsStorage);
+        storageManager = new StorageManager(addressBookStorage, scheduleStorage, userPrefsStorage);
     }
 
     private Path getTempFilePath(String fileName) {
@@ -56,10 +60,11 @@ public class StorageManagerTest {
         assertEquals(original, retrieved);
     }
 
+
     @Test
     public void addressBookReadSave() throws Exception {
-        /*
-         * Note: This is an integration test that verifies the StorageManager is properly wired to the
+
+        /* Note: This is an integration test that verifies the StorageManager is properly wired to the
          * {@link XmlAddressBookStorage} class.
          * More extensive testing of UserPref saving/reading is done in {@link XmlAddressBookStorageTest} class.
          */
@@ -70,6 +75,16 @@ public class StorageManagerTest {
     }
 
     @Test
+    public void scheduleReadSave() throws Exception {
+        Schedule original = getTypicalSchedule();
+        storageManager.saveSchedule(original);
+        ReadOnlySchedule retrieved = storageManager.readSchedule().get();
+        assertEquals(original, new Schedule(retrieved));
+
+    }
+
+
+    @Test
     public void getAddressBookFilePath() {
         assertNotNull(storageManager.getAddressBookFilePath());
     }
@@ -77,7 +92,10 @@ public class StorageManagerTest {
     @Test
     public void handleAddressBookChangedEvent_exceptionThrown_eventRaised() {
         // Create a StorageManager while injecting a stub that  throws an exception when the save method is called
+        // TODO: probably have to add some test for xml schedule storage that does the same as the xml
+        // addressbook storage
         Storage storage = new StorageManager(new XmlAddressBookStorageExceptionThrowingStub(Paths.get("dummy")),
+                                             new XmlScheduleStorage(Paths.get("dummy")),
                                              new JsonUserPrefsStorage(Paths.get("dummy")));
         storage.handleAddressBookChangedEvent(new AddressBookChangedEvent(new AddressBook()));
         assertTrue(eventsCollectorRule.eventsCollector.getMostRecent() instanceof DataSavingExceptionEvent);
